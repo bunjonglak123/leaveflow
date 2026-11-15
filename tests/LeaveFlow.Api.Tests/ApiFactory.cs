@@ -25,11 +25,26 @@ public class ApiFactory : WebApplicationFactory<Program>
         _keepAlive.Open();
     }
 
+    /// <summary>
+    /// Set LEAVEFLOW_TEST_SQLSERVER to a SQL Server connection string (no Database=) to run every
+    /// API test against real SQL Server through EF migrations instead of SQLite. Used by CI.
+    /// </summary>
+    private static readonly string? SqlServerBase = Environment.GetEnvironmentVariable("LEAVEFLOW_TEST_SQLSERVER");
+    private readonly string _sqlServerDb = "lf_test_" + Guid.NewGuid().ToString("N")[..12];
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
-        builder.UseSetting("Database:Provider", "Sqlite");
-        builder.UseSetting("ConnectionStrings:Default", "DataSource=" + _dbName);
+        if (SqlServerBase is { Length: > 0 })
+        {
+            builder.UseSetting("Database:Provider", "SqlServer");
+            builder.UseSetting("ConnectionStrings:Default", $"{SqlServerBase.TrimEnd(';')};Database={_sqlServerDb}");
+        }
+        else
+        {
+            builder.UseSetting("Database:Provider", "Sqlite");
+            builder.UseSetting("ConnectionStrings:Default", "DataSource=" + _dbName);
+        }
         builder.UseSetting("Seed:Enabled", "true");
         builder.UseSetting("Demo:Enabled", DemoEnabled ? "true" : "false");
         builder.UseSetting("Jwt:Key", "test-signing-key-that-is-long-enough-for-hs256!!");
@@ -48,6 +63,15 @@ public class ApiFactory : WebApplicationFactory<Program>
 
     protected override void Dispose(bool disposing)
     {
+        if (disposing && SqlServerBase is { Length: > 0 })
+        {
+            try
+            {
+                using var scope = Services.CreateScope();
+                scope.ServiceProvider.GetRequiredService<LeaveFlow.Api.Data.AppDbContext>().Database.EnsureDeleted();
+            }
+            catch (InvalidOperationException) { /* host never started */ }
+        }
         base.Dispose(disposing);
         if (disposing) _keepAlive.Dispose();
     }
