@@ -1,23 +1,66 @@
+using System.Text.Json.Serialization;
+using LeaveFlow.Api;
+using LeaveFlow.Api.Auth;
+using LeaveFlow.Api.Data;
+using LeaveFlow.Domain;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+
 var builder = WebApplication.CreateBuilder(args);
+var config = builder.Configuration;
 
-// Add services to the container.
+builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddLeaveFlowDb(config);
+builder.Services.AddScoped<JwtTokens>();
 
-builder.Services.AddControllers();
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
+builder.Services.AddControllers()
+    .AddJsonOptions(o => o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+builder.Services.AddProblemDetails();
+builder.Services.AddExceptionHandler<DomainExceptionHandler>();
 builder.Services.AddOpenApi();
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(o =>
+    {
+        o.MapInboundClaims = false;
+        o.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidIssuer = JwtTokens.Issuer,
+            ValidAudience = JwtTokens.Issuer,
+            IssuerSigningKey = JwtTokens.SigningKey(config),
+            NameClaimType = System.Security.Claims.ClaimTypes.Name,
+            RoleClaimType = System.Security.Claims.ClaimTypes.Role,
+        };
+    });
+// Validate token lifetimes with the same clock that issues them.
+builder.Services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme)
+    .Configure<TimeProvider>((o, clock) =>
+    {
+        o.TimeProvider = clock;
+        var skew = TimeSpan.FromMinutes(2);
+        o.TokenValidationParameters.LifetimeValidator = (notBefore, expires, _, _) =>
+        {
+            var now = clock.GetUtcNow().UtcDateTime;
+            return (notBefore is null || notBefore.Value <= now + skew) && (expires is null || expires.Value > now - skew);
+        };
+    });
+builder.Services.AddAuthorizationBuilder()
+    .AddPolicy("Manager", p => p.RequireRole(nameof(Role.Manager), nameof(Role.HrAdmin)))
+    .AddPolicy("Hr", p => p.RequireRole(nameof(Role.HrAdmin)));
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
-    app.MapOpenApi();
-}
+app.UseExceptionHandler();
+if (app.Environment.IsDevelopment()) app.MapOpenApi();
 
-app.UseHttpsRedirection();
-
+app.UseDefaultFiles();
+app.UseStaticFiles();
+app.UseAuthentication();
 app.UseAuthorization();
-
 app.MapControllers();
+app.MapFallbackToFile("index.html");
 
+app.InitialiseDatabase();
 app.Run();
+
+public partial class Program;
