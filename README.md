@@ -1,5 +1,7 @@
 # LeaveFlow
 
+[![CI](https://github.com/bunjonglak123/leaveflow/actions/workflows/ci.yml/badge.svg)](https://github.com/bunjonglak123/leaveflow/actions/workflows/ci.yml)
+
 Leave request and approval system for small and medium businesses (Thai UI).
 Employees request leave, managers approve it, HR manages policies and gets a monthly report.
 
