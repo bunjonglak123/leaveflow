@@ -9,10 +9,16 @@ using Microsoft.IdentityModel.Tokens;
 var builder = WebApplication.CreateBuilder(args);
 var config = builder.Configuration;
 
+// Public demo without a configured key: use a random one (tokens just expire on restart).
+// Real deployments must set Jwt:Key; startup fails otherwise.
+if (string.IsNullOrWhiteSpace(config["Jwt:Key"]) && config.GetValue<bool>("Demo:Enabled"))
+    config["Jwt:Key"] = Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(48));
+
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddLeaveFlowDb(config);
 builder.Services.AddScoped<JwtTokens>();
 builder.Services.AddScoped<LeaveFlow.Api.Services.LeaveService>();
+if (config.GetValue<bool>("Demo:ResetDaily")) builder.Services.AddHostedService<DemoReset>();
 
 builder.Services.AddControllers()
     .AddJsonOptions(o => o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));

@@ -1,0 +1,10 @@
+**/bin
+**/obj
+**/node_modules
+web/.angular
+src/LeaveFlow.Api/wwwroot
+tests
+.git
+.github
+*.md
+!web/**/*.md

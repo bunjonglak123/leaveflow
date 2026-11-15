@@ -1,4 +1,8 @@
-# Dev database. Password is a local-only default; never reuse it anywhere real.
+# Full stack on your machine: SQL Server + LeaveFlow (API + web) at http://localhost:8080
+#   docker compose up --build
+# Only the database (for `dotnet run` / `ng serve`):
+#   docker compose up -d sqlserver
+# Passwords/keys below are local-only defaults; never reuse them anywhere real.
 services:
   sqlserver:
     image: mcr.microsoft.com/mssql/server:2022-latest
@@ -9,5 +13,27 @@ services:
       - "1433:1433"
     volumes:
       - sqldata:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P 'LeaveFlow_dev_123!' -Q 'SELECT 1' || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+
+  app:
+    build: .
+    profiles: ["app"]
+    restart: unless-stopped
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    environment:
+      Database__Provider: SqlServer
+      ConnectionStrings__Default: "Server=sqlserver,1433;Database=LeaveFlow;User Id=sa;Password=LeaveFlow_dev_123!;TrustServerCertificate=True"
+      Jwt__Key: "local-compose-key-not-for-production-0123456789"
+      Demo__ResetDaily: "false"
+    ports:
+      - "8080:8080"
+
 volumes:
   sqldata:

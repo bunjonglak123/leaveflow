@@ -1,0 +1,67 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  api:
+    runs-on: ubuntu-24.04
+    services:
+      sqlserver:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          ACCEPT_EULA: "Y"
+          MSSQL_SA_PASSWORD: "LeaveFlow_ci_123!"
+        ports:
+          - 1433:1433
+        options: >-
+          --health-cmd "/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P 'LeaveFlow_ci_123!' -Q 'SELECT 1' || exit 1"
+          --health-interval 10s --health-timeout 5s --health-retries 20 --health-start-period 20s
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - run: dotnet restore
+      - run: dotnet build --no-restore -c Release
+      - name: Domain + API tests (SQLite)
+        run: dotnet test --no-build -c Release
+      - name: API tests against SQL Server (EF migrations)
+        run: dotnet test tests/LeaveFlow.Api.Tests --no-build -c Release
+        env:
+          LEAVEFLOW_TEST_SQLSERVER: "Server=localhost,1433;User Id=sa;Password=LeaveFlow_ci_123!;TrustServerCertificate=True"
+
+  web:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npx ng test --watch=false
+      - run: npx ng build
+
+  image:
+    needs: [api, web]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: docker build -t leaveflow:ci .
+      - name: Smoke test the demo image
+        run: |
+          docker run -d --name lf -p 8080:8080 leaveflow:ci
+          for i in $(seq 1 30); do curl -fs http://localhost:8080/ >/dev/null && break; sleep 2; done
+          node scripts/smoke.mjs http://localhost:8080
+      - if: failure()
+        run: docker logs lf || true
