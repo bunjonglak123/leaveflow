@@ -141,8 +141,11 @@ public class EmployeeTests
     }
 
     [Fact]
-    public async Task Requests_RequireLogin() =>
-        Assert.Equal(HttpStatusCode.Unauthorized, (await new ApiFactory().CreateClient().GetAsync("/api/requests")).StatusCode);
+    public async Task Requests_RequireLogin()
+    {
+        using var f = new ApiFactory();
+        Assert.Equal(HttpStatusCode.Unauthorized, (await f.CreateClient().GetAsync("/api/requests")).StatusCode);
+    }
 }
 
 public record HolidayBody(DateOnly Date, string NameTh);

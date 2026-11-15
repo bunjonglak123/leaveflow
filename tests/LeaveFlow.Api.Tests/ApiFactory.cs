@@ -61,17 +61,32 @@ public class ApiFactory : WebApplicationFactory<Program>
         return client;
     }
 
+    private bool _dropped;
+
+    /// <summary>Drops the per-factory SQL Server database. Must run before the host is disposed.</summary>
+    private void DropSqlServerDb()
+    {
+        if (_dropped || SqlServerBase is not { Length: > 0 }) return;
+        _dropped = true;
+        using var conn = new Microsoft.Data.SqlClient.SqlConnection($"{SqlServerBase.TrimEnd(';')};Database=master");
+        conn.Open();
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = $"IF DB_ID('{_sqlServerDb}') IS NOT NULL BEGIN " +
+            $"ALTER DATABASE [{_sqlServerDb}] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [{_sqlServerDb}]; END";
+        cmd.ExecuteNonQuery();
+    }
+
+    public override async ValueTask DisposeAsync()
+    {
+        DropSqlServerDb();
+        await base.DisposeAsync();
+        _keepAlive.Dispose();
+        GC.SuppressFinalize(this);
+    }
+
     protected override void Dispose(bool disposing)
     {
-        if (disposing && SqlServerBase is { Length: > 0 })
-        {
-            try
-            {
-                using var scope = Services.CreateScope();
-                scope.ServiceProvider.GetRequiredService<LeaveFlow.Api.Data.AppDbContext>().Database.EnsureDeleted();
-            }
-            catch (InvalidOperationException) { /* host never started */ }
-        }
+        if (disposing) DropSqlServerDb();
         base.Dispose(disposing);
         if (disposing) _keepAlive.Dispose();
     }
