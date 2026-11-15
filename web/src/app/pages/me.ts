@@ -84,7 +84,7 @@ import { Balance, HALF_LABEL, HalfDay, LeaveRequest, NewLeaveRequest, STATUS_LAB
                 <div class="r-main">
                   <div><b>{{ r.leaveTypeName }}</b> · {{ range(r) }} <span class="muted">({{ r.days }} วัน{{ r.half !== 'None' ? ' ' + halfLabel[r.half] : '' }})</span></div>
                   @if (r.reason) { <div class="muted small">{{ r.reason }}</div> }
-                  @if (r.decisionNote) { <div class="small note">หมายเหตุ: {{ r.decisionNote }}</div> }
+                  @if (r.decisionNote) { <div class="small" [class.note]="r.status === 'Rejected'" [class.muted]="r.status !== 'Rejected'">หมายเหตุ: {{ r.decisionNote }}</div> }
                 </div>
                 <div class="r-side">
                   <span class="status {{ r.status }}">{{ statusLabel[r.status] }}</span>
