@@ -12,6 +12,7 @@ var config = builder.Configuration;
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddLeaveFlowDb(config);
 builder.Services.AddScoped<JwtTokens>();
+builder.Services.AddScoped<LeaveFlow.Api.Services.LeaveService>();
 
 builder.Services.AddControllers()
     .AddJsonOptions(o => o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
