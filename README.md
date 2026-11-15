@@ -5,6 +5,8 @@
 Leave request and approval system for small and medium businesses (Thai UI).
 Employees request leave, managers approve it, HR manages policies and gets a monthly report.
 
+**Live demo:** https://leaveflow-demo-sbwh.onrender.com — one-click login as employee, manager or HR. Fake data, reset every day. Free hosting sleeps when idle, so the first load can take ~30 seconds.
+
 **Stack:** ASP.NET Core 10 Web API · EF Core 10 · SQL Server 2022 · Angular 22 + Angular Material · xUnit · Vitest · Docker · GitHub Actions
 
 | Employee | Manager approvals |
