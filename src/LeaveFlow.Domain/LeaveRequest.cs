@@ -41,6 +41,15 @@ public class LeaveRequest
         Decide(LeaveStatus.Approved, approverId, note, now);
     }
 
+    /// <summary>Approve with no human decider — used when the requester has nobody who can approve them.</summary>
+    public void AutoApprove(string note, DateTime now)
+    {
+        if (Status != LeaveStatus.Pending) throw new DomainException("คำขอนี้ถูกพิจารณาไปแล้ว");
+        Status = LeaveStatus.Approved;
+        DecisionNote = note;
+        DecidedAt = now;
+    }
+
     public void Reject(int approverId, string? note, DateTime now)
     {
         EnsureDecidable(approverId);

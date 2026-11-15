@@ -27,13 +27,14 @@ export function buildMonthGrid(month: string, entries: CalendarEntry[], holidays
       const iso = toIsoDate(cursor);
       const weekend = cursor.getDay() === 0 || cursor.getDay() === 6;
       const holiday = holidays.get(iso) ?? null;
+      const inMonth = cursor.getMonth() === m - 1;
       week.push({
         iso,
         day: cursor.getDate(),
-        inMonth: cursor.getMonth() === m - 1,
+        inMonth,
         weekend,
         holiday,
-        entries: weekend || holiday ? [] : entries.filter((e) => e.start <= iso && iso <= e.end),
+        entries: !inMonth || weekend || holiday ? [] : entries.filter((e) => e.start <= iso && iso <= e.end),
       });
       cursor.setDate(cursor.getDate() + 1);
     }

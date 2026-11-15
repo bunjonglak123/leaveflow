@@ -20,6 +20,12 @@ describe('buildMonthGrid', () => {
     expect(days).toEqual(['2026-11-20', '2026-11-23']);
   });
 
+  it('leaves days of neighbouring months empty (their data is not loaded)', () => {
+    const weeks = buildMonthGrid('2026-11', [entry('2026-11-30', '2026-12-02')], new Map());
+    const filled = weeks.flat().filter((d) => d.entries.length).map((d) => d.iso);
+    expect(filled).toEqual(['2026-11-30']);
+  });
+
   it('marks holidays and leaves them empty', () => {
     const weeks = buildMonthGrid('2026-12', [entry('2026-12-09', '2026-12-11')], new Map([['2026-12-10', 'วันรัฐธรรมนูญ']]));
     const dec10 = weeks.flat().find((d) => d.iso === '2026-12-10')!;

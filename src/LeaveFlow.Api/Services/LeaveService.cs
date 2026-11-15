@@ -51,6 +51,18 @@ public class LeaveService(AppDbContext db, TimeProvider clock)
         db.LeaveRequests.Add(candidate);
         await db.SaveChangesAsync();
         await AuditAsync(candidate.Id, employeeId, AuditAction.Created, null);
+
+        // Nobody can approve: no manager and no other HR admin (e.g. a sole HR admin). Don't leave it stuck.
+        var me = await db.Employees.FindAsync(employeeId);
+        var hasApprover = me?.ManagerId is not null
+            || await db.Employees.AnyAsync(e => e.Role == Role.HrAdmin && e.Active && e.Id != employeeId);
+        if (!hasApprover)
+        {
+            const string note = "อนุมัติอัตโนมัติ: ไม่มีผู้อนุมัติในระบบ";
+            candidate.AutoApprove(note, UtcNow);
+            await db.SaveChangesAsync();
+            await AuditAsync(candidate.Id, employeeId, AuditAction.Approved, note);
+        }
         return candidate;
     }
 

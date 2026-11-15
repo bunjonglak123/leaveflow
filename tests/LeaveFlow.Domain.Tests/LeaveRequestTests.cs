@@ -47,6 +47,16 @@ public class LeaveRequestTests
     }
 
     [Fact]
+    public void AutoApprove_ApprovesWithoutDecider()
+    {
+        var r = Req(D(11, 18), D(11, 18), 1);
+        r.AutoApprove("ไม่มีผู้อนุมัติ", Now);
+        Assert.Equal(LeaveStatus.Approved, r.Status);
+        Assert.Null(r.DecidedById);
+        Assert.Throws<DomainException>(() => r.AutoApprove("again", Now));
+    }
+
+    [Fact]
     public void Reject_RequiresNote()
     {
         var r = Req(D(11, 18), D(11, 18), 1);

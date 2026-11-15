@@ -1,5 +1,5 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
-import { FormsModule } from '@angular/forms';
+import { FormsModule, NgForm } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -35,7 +35,7 @@ import { Balance, HALF_LABEL, HalfDay, LeaveRequest, NewLeaveRequest, STATUS_LAB
       <div class="cols">
         <section class="card">
           <h2>ยื่นคำขอลา</h2>
-          <form (ngSubmit)="submit()" #f="ngForm">
+          <form (ngSubmit)="submit(f)" #f="ngForm">
             <mat-form-field appearance="outline">
               <mat-label>ประเภทการลา</mat-label>
               <mat-select name="type" [(ngModel)]="typeId" (ngModelChange)="refreshPreview()" required>
@@ -177,16 +177,19 @@ export class MePage implements OnInit {
     }
   }
 
-  protected async submit(): Promise<void> {
+  protected async submit(form: NgForm): Promise<void> {
     const req = this.buildRequest();
     if (!req) return;
     await this.run(async () => {
       await this.api.createRequest(req);
       this.snack.open('ส่งคำขอลาแล้ว รอหัวหน้าอนุมัติ', 'ปิด', { duration: 4000 });
+      // Clear dates first: resetForm re-fires ngModelChange → refreshPreview, which must see no dates.
       this.start = this.end = null;
-      this.reason = '';
-      this.half = 'None';
+      this.previewSeq++;
+      // resetForm clears touched/submitted state so empty required fields don't turn red.
+      form.resetForm({ type: req.leaveTypeId, half: 'None', reason: '' });
       this.previewDays.set(null);
+      this.previewError.set('');
       this.dates.set([null, null]);
     });
   }

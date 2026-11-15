@@ -123,6 +123,32 @@ public class ManagerTests
     }
 
     [Fact]
+    public async Task SoleHrAdminWithoutManager_IsAutoApproved()
+    {
+        using var f = new ApiFactory();
+        var hr = await f.LoginAs(Hr);
+        var types = (await hr.GetFromJsonAsync<List<BalanceBody>>("/api/balances"))!;
+        var res = await hr.PostAsJsonAsync("/api/requests",
+            new { leaveTypeId = types[0].LeaveTypeId, start = "2026-11-25", end = "2026-11-25", half = "None", reason = "x" });
+        var body = await res.Content.ReadFromJsonAsync<RequestBody>();
+        Assert.Equal("Approved", body!.Status);
+        var history = (await hr.GetFromJsonAsync<List<AuditBody>>($"/api/requests/{body.Id}/history"))!;
+        Assert.Equal(["Created", "Approved"], history.Select(h => h.Action).ToArray());
+        Assert.Contains("อัตโนมัติ", history[1].Note);
+    }
+
+    [Fact]
+    public async Task EmployeeWithManager_StaysPending()
+    {
+        using var f = new ApiFactory();
+        var piti = await f.LoginAs(Piti);
+        var types = (await piti.GetFromJsonAsync<List<BalanceBody>>("/api/balances"))!;
+        var res = await piti.PostAsJsonAsync("/api/requests",
+            new { leaveTypeId = types[1].LeaveTypeId, start = "2026-11-25", end = "2026-11-25", half = "None", reason = "x" });
+        Assert.Equal("Pending", (await res.Content.ReadFromJsonAsync<RequestBody>())!.Status);
+    }
+
+    [Fact]
     public async Task History_OfSomeoneElse_Is403ForEmployee()
     {
         using var f = new ApiFactory();
