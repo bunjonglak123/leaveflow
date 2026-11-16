@@ -22,6 +22,8 @@ export class Api {
   createRequest = (r: NewLeaveRequest) => this.post<LeaveRequest>('/api/requests', r);
   cancel = (id: number) => this.post<LeaveRequest>(`/api/requests/${id}/cancel`);
   history = (id: number) => this.get<AuditEntry[]>(`/api/requests/${id}/history`);
+  changePassword = (currentPassword: string, newPassword: string) =>
+    this.post<void>('/api/me/password', { currentPassword, newPassword });
   holidays = (year: number) => this.get<Holiday[]>('/api/holidays', { year: String(year) });
 
   // manager
@@ -38,6 +40,7 @@ export class Api {
   }) => this.post<Employee>('/api/hr/employees', e);
   updateEmployee = (id: number, e: { name: string; department: string; role: Role; managerId: number | null; active: boolean }) =>
     this.put<Employee>(`/api/hr/employees/${id}`, e);
+  resetPassword = (id: number, newPassword: string) => this.post<void>(`/api/hr/employees/${id}/password`, { newPassword });
   leaveTypes = () => this.get<LeaveType[]>('/api/hr/leave-types');
   createLeaveType = (t: { nameTh: string; yearlyQuota: number }) => this.post<LeaveType>('/api/hr/leave-types', t);
   updateLeaveType = (id: number, t: { nameTh: string; yearlyQuota: number }) => this.put<LeaveType>(`/api/hr/leave-types/${id}`, t);

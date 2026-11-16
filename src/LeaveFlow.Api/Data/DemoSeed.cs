@@ -15,12 +15,7 @@ public static class DemoSeed
     {
         if (db.Employees.Any()) return;
 
-        var types = new[]
-        {
-            new LeaveType { NameTh = "ลาพักร้อน", YearlyQuota = 6 },
-            new LeaveType { NameTh = "ลาป่วย", YearlyQuota = 30 },
-            new LeaveType { NameTh = "ลากิจ", YearlyQuota = 3 },
-        };
+        var types = FirstRunSetup.DefaultLeaveTypes().ToArray();
         db.LeaveTypes.AddRange(types);
         db.Holidays.AddRange(FixedThaiHolidays(today.Year));
 

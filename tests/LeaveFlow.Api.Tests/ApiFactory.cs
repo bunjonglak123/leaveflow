@@ -17,6 +17,9 @@ public class ApiFactory : WebApplicationFactory<Program>
     private readonly SqliteConnection _keepAlive;
 
     public bool DemoEnabled { get; init; } = true;
+    public bool SeedEnabled { get; init; } = true;
+    /// <summary>Extra configuration, e.g. Setup:AdminEmail for first-run tests.</summary>
+    public Dictionary<string, string> Settings { get; init; } = [];
     public FakeTimeProvider Clock { get; } = new(Today);
 
     public ApiFactory()
@@ -45,16 +48,17 @@ public class ApiFactory : WebApplicationFactory<Program>
             builder.UseSetting("Database:Provider", "Sqlite");
             builder.UseSetting("ConnectionStrings:Default", "DataSource=" + _dbName);
         }
-        builder.UseSetting("Seed:Enabled", "true");
+        builder.UseSetting("Seed:Enabled", SeedEnabled ? "true" : "false");
+        foreach (var (k, v) in Settings) builder.UseSetting(k, v);
         builder.UseSetting("Demo:Enabled", DemoEnabled ? "true" : "false");
         builder.UseSetting("Jwt:Key", "test-signing-key-that-is-long-enough-for-hs256!!");
         builder.ConfigureTestServices(s => s.AddSingleton<TimeProvider>(Clock));
     }
 
-    public async Task<HttpClient> LoginAs(string email)
+    public async Task<HttpClient> LoginAs(string email, string password = "demo1234")
     {
         var client = CreateClient();
-        var res = await client.PostAsJsonAsync("/api/auth/login", new { email, password = "demo1234" });
+        var res = await client.PostAsJsonAsync("/api/auth/login", new { email, password });
         res.EnsureSuccessStatusCode();
         var body = await res.Content.ReadFromJsonAsync<LoginBody>();
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", body!.Token);

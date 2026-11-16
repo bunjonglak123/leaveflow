@@ -1,4 +1,6 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { firstValueFrom } from 'rxjs';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -19,6 +21,7 @@ import { Role } from '../core/models';
         <h1>ระบบลางานสำหรับทีมของคุณ</h1>
         <p class="sub">ยื่นลา อนุมัติ และดูวันลาคงเหลือได้ในที่เดียว</p>
 
+        @if (demoEnabled()) {
         <div class="demo">
           <p class="label">ทดลองใช้งาน (ข้อมูลตัวอย่าง รีเซ็ตทุกวัน)</p>
           <div class="roles">
@@ -31,6 +34,7 @@ import { Role } from '../core/models';
         </div>
 
         <div class="or"><span>หรือเข้าสู่ระบบด้วยอีเมล</span></div>
+        }
 
         <form (ngSubmit)="login()">
           <mat-form-field appearance="outline">
@@ -66,11 +70,14 @@ import { Role } from '../core/models';
     .error { color: var(--lf-rejected); margin: 0 0 8px; font-size: 14px; }
   `,
 })
-export class LoginPage {
+export class LoginPage implements OnInit {
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
   protected email = '';
   protected password = '';
+  private readonly http = inject(HttpClient);
+  /** Hidden until the server confirms demo mode, so real installs never flash the buttons. */
+  protected readonly demoEnabled = signal(false);
   protected readonly busy = signal(false);
   protected readonly error = signal('');
   protected readonly demos: { role: Role; label: string; icon: string }[] = [
@@ -81,6 +88,15 @@ export class LoginPage {
 
   protected login(): Promise<void> {
     return this.run(() => this.auth.login(this.email, this.password));
+  }
+
+  async ngOnInit(): Promise<void> {
+    try {
+      const cfg = await firstValueFrom(this.http.get<{ demo: boolean }>('/api/config'));
+      this.demoEnabled.set(cfg.demo);
+    } catch {
+      this.demoEnabled.set(false);
+    }
   }
 
   protected demo(role: Role): Promise<void> {

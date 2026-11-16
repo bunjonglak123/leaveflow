@@ -9,6 +9,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { Api, thaiDate, toIsoDate } from '../../core/api';
 import { errorMessage } from '../../core/auth.interceptor';
 import { Employee, ROLE_LABEL, Role } from '../../core/models';
+import { passwordProblem } from '../password-rules';
 
 interface Draft {
   id: number | null;
@@ -84,6 +85,13 @@ const blank = (): Draft => ({
             } @else {
               <mat-checkbox name="active" [(ngModel)]="draft().active">ยังทำงานอยู่</mat-checkbox>
             }
+            @if (draft().id) {
+              <div class="reset">
+                <mat-form-field appearance="outline" subscriptSizing="dynamic"><mat-label>รีเซ็ตรหัสผ่าน (รหัสใหม่)</mat-label>
+                  <input matInput type="password" name="newpw" [(ngModel)]="newPassword" autocomplete="new-password" /></mat-form-field>
+                <button mat-stroked-button type="button" (click)="resetPassword()" [disabled]="busy() || !newPassword">รีเซ็ต</button>
+              </div>
+            }
             <div class="btns">
               @if (draft().id) { <button mat-button type="button" (click)="draft.set(blank())">ยกเลิก</button> }
               <button mat-flat-button type="submit" [disabled]="busy()">บันทึก</button>
@@ -101,6 +109,8 @@ const blank = (): Draft => ({
     .emp tr.inactive td { opacity: .5; }
     .small { font-size: 12px; }
     form { display: grid; }
+    .reset { display: flex; gap: 8px; align-items: center; margin: 12px 0 4px; }
+    .reset mat-form-field { flex: 1; }
     .btns { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
     @media (max-width: 1000px) { .cols { grid-template-columns: 1fr; } }
   `,
@@ -122,7 +132,10 @@ export class EmployeesPage implements OnInit {
     return this.load();
   }
 
+  protected newPassword = '';
+
   protected edit(e: Employee): void {
+    this.newPassword = '';
     this.draft.set({ ...blank(), id: e.id, name: e.name, email: e.email, department: e.department, role: e.role,
       managerId: e.managerId, startDate: e.startDate, active: e.active });
   }
@@ -141,6 +154,25 @@ export class EmployeesPage implements OnInit {
       }
       this.draft.set(blank());
       await this.load();
+    } catch (err) {
+      this.snack.open(errorMessage(err), 'ปิด', { duration: 5000 });
+    } finally {
+      this.busy.set(false);
+    }
+  }
+
+  protected async resetPassword(): Promise<void> {
+    const d = this.draft();
+    const problem = passwordProblem(this.newPassword);
+    if (!d.id || problem) {
+      if (problem) this.snack.open(problem, 'ปิด', { duration: 4000 });
+      return;
+    }
+    this.busy.set(true);
+    try {
+      await this.api.resetPassword(d.id, this.newPassword);
+      this.newPassword = '';
+      this.snack.open(`รีเซ็ตรหัสผ่านของ ${d.name} แล้ว แจ้งรหัสใหม่ให้พนักงานและให้เปลี่ยนเองหลังเข้าสู่ระบบ`, 'ปิด', { duration: 6000 });
     } catch (err) {
       this.snack.open(errorMessage(err), 'ปิด', { duration: 5000 });
     } finally {

@@ -13,6 +13,7 @@ namespace LeaveFlow.Api.Controllers;
 public record EmployeeDto(int Id, string Name, string Email, string Department, Role Role, int? ManagerId,
     string? ManagerName, DateOnly StartDate, bool Active);
 public record NewEmployeeDto(string Name, string Email, string Department, Role Role, int? ManagerId, DateOnly StartDate, string Password);
+public record ResetPasswordDto(string NewPassword);
 public record UpdateEmployeeDto(string Name, string Department, Role Role, int? ManagerId, bool Active);
 public record LeaveTypeDto(int Id, string NameTh, decimal YearlyQuota);
 public record SaveLeaveTypeDto(string NameTh, decimal YearlyQuota);
@@ -22,10 +23,8 @@ public record MonthlyReportDto(string Month, List<string> LeaveTypes, List<Repor
 [ApiController]
 [Route("api/hr")]
 [Authorize(Policy = "Hr")]
-public class HrController(AppDbContext db, LeaveService leave) : ControllerBase
+public class HrController(AppDbContext db, LeaveService leave, IConfiguration config) : ControllerBase
 {
-    private static readonly PasswordHasher<Employee> Hasher = new();
-
     // ---------- employees ----------
 
     [HttpGet("employees")]
@@ -42,7 +41,6 @@ public class HrController(AppDbContext db, LeaveService leave) : ControllerBase
     {
         var email = (req.Email ?? "").Trim().ToLowerInvariant();
         if (string.IsNullOrWhiteSpace(req.Name) || !email.Contains('@')) throw new DomainException("กรุณากรอกชื่อและอีเมลให้ถูกต้อง");
-        if ((req.Password ?? "").Length < 8) throw new DomainException("รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร");
         if (await db.Employees.AnyAsync(e => e.Email == email)) throw new DomainException("อีเมลนี้มีอยู่แล้ว");
         await EnsureManagerExists(req.ManagerId);
 
@@ -51,7 +49,7 @@ public class HrController(AppDbContext db, LeaveService leave) : ControllerBase
             Name = req.Name.Trim(), Email = email, Department = (req.Department ?? "").Trim(), Role = req.Role,
             ManagerId = req.ManagerId, StartDate = req.StartDate,
         };
-        e.PasswordHash = Hasher.HashPassword(e, req.Password!);
+        Passwords.Set(e, req.Password);
         db.Employees.Add(e);
         await db.SaveChangesAsync();
         return Created($"/api/hr/employees/{e.Id}", (await Employees()).Single(x => x.Id == e.Id));
@@ -73,6 +71,17 @@ public class HrController(AppDbContext db, LeaveService leave) : ControllerBase
         e.Active = req.Active;
         await db.SaveChangesAsync();
         return (await Employees()).Single(x => x.Id == id);
+    }
+
+    [HttpPost("employees/{id:int}/password")]
+    public async Task<IActionResult> ResetPassword(int id, ResetPasswordDto req)
+    {
+        Passwords.EnsureChangesAllowed(config);
+        var e = await db.Employees.FindAsync(id);
+        if (e is null) return NotFound();
+        Passwords.Set(e, req.NewPassword);
+        await db.SaveChangesAsync();
+        return NoContent();
     }
 
     private async Task EnsureManagerExists(int? managerId)

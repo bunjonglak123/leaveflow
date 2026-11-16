@@ -39,6 +39,13 @@ public class AuthTests : IClassFixture<ApiFactory>
     }
 
     [Fact]
+    public async Task Config_IsPublicAndReportsDemoMode()
+    {
+        var config = await _f.CreateClient().GetFromJsonAsync<Dictionary<string, bool>>("/api/config");
+        Assert.True(config!["demo"]);
+    }
+
+    [Fact]
     public async Task Me_WithoutToken_Is401() =>
         Assert.Equal(HttpStatusCode.Unauthorized, (await _f.CreateClient().GetAsync("/api/me")).StatusCode);
 

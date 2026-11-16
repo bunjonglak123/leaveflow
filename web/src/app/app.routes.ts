@@ -9,6 +9,7 @@ export const routes: Routes = [
     loadComponent: () => import('./layout/shell').then((m) => m.Shell),
     children: [
       { path: 'me', loadComponent: () => import('./pages/me').then((m) => m.MePage), title: 'การลาของฉัน · LeaveFlow' },
+      { path: 'password', loadComponent: () => import('./pages/password').then((m) => m.PasswordPage), title: 'เปลี่ยนรหัสผ่าน · LeaveFlow' },
       {
         path: 'team',
         canActivate: [roleGuard('Manager', 'HrAdmin')],

@@ -19,6 +19,7 @@ All names and data in the screenshots and demo are made up.
 
 ## Features
 
+- **Accounts:** everyone can change their own password; HR can reset anyone's. Disabled on the public demo so visitors can't lock each other out.
 - **Employee:** leave balances per type, request full day or half day (morning/afternoon) with a live working-day count, cancel while pending, status history.
 - **Manager:** approval queue for direct reports, approve/reject with a note (required when rejecting), team month calendar.
 - **HR admin:** employees with department, role and approving manager; leave types with yearly quota; company holidays; monthly report per employee × leave type with **CSV export that opens correctly in Excel** (UTF-8 BOM, formula-injection safe).
@@ -64,6 +65,14 @@ cd web && npm ci && npx ng serve                   # UI on :4200, proxies /api t
 
 Demo accounts (password `demo1234`): `employee@leaveflow.demo`, `manager@leaveflow.demo`, `hr@leaveflow.demo`.
 
+**Real install** (no demo data, first HR admin from config):
+
+```bash
+docker run -p 8080:8080 -e Seed__Enabled=false -e Demo__Enabled=false -e Demo__ResetDaily=false   -e Jwt__Key="$(openssl rand -base64 48)"   -e Setup__AdminEmail=hr@yourcompany.co.th -e Setup__AdminPassword='change-me-now'   -v leaveflow-data:/data leaveflow
+```
+
+Log in as that admin, change the password, then add employees. The demo buttons are hidden automatically.
+
 **Public demo image** (SQLite, fake data, reset every day):
 
 ```bash
@@ -73,7 +82,7 @@ docker build -t leaveflow . && docker run -p 8080:8080 leaveflow
 ## Tests
 
 ```bash
-dotnet test                                    # 29 domain + 52 API tests (SQLite)
+dotnet test                                    # 29 domain + 67 API tests (SQLite)
 LEAVEFLOW_TEST_SQLSERVER="Server=localhost,1433;User Id=sa;Password=LeaveFlow_dev_123!;TrustServerCertificate=True" \
   dotnet test tests/LeaveFlow.Api.Tests        # same API tests on real SQL Server via migrations
 cd web && npx ng test --watch=false            # Angular unit tests
@@ -92,5 +101,6 @@ CI (GitHub Actions) runs all of the above, including the SQL Server pass and a s
 | `Seed:Enabled` | seed the fake demo organisation on an empty database |
 | `Demo:Enabled` | enables one-click demo login; generates a random JWT key if none is set |
 | `Demo:ResetDaily` | wipe and reseed the demo data once per local day |
+| `Setup:AdminEmail` / `Setup:AdminPassword` / `Setup:AdminName` | real install (`Seed:Enabled` off): on an empty database, create the first HR admin plus default leave types and holidays. Ignored once anyone exists |
 
 Set them as environment variables with `__` (e.g. `Jwt__Key`). Never commit real keys or passwords; the ones in `appsettings.Development.json` and `docker-compose.yml` are local-only defaults.

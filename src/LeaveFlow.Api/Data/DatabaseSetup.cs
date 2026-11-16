@@ -40,7 +40,7 @@ public static class DatabaseSetup
         }
     }
 
-    /// <summary>Creates/migrates the schema and seeds demo data when <c>Seed:Enabled</c> is true.</summary>
+    /// <summary>Creates/migrates the schema and seeds demo data (<c>Seed:Enabled</c>) or the first HR admin (<c>Setup:*</c>).</summary>
     public static void InitialiseDatabase(this WebApplication app)
     {
         using var scope = app.Services.CreateScope();
@@ -48,10 +48,19 @@ public static class DatabaseSetup
         if (db.Database.IsSqlServer()) MigrateWithRetry(db, app.Logger);
         else db.Database.EnsureCreated();
 
-        if (app.Configuration.GetValue<bool>("Seed:Enabled"))
+        var cfg = app.Configuration;
+        var today = DateOnly.FromDateTime(scope.ServiceProvider.GetRequiredService<TimeProvider>().GetLocalNow().DateTime);
+        if (cfg.GetValue<bool>("Seed:Enabled"))
         {
-            var today = DateOnly.FromDateTime(scope.ServiceProvider.GetRequiredService<TimeProvider>().GetLocalNow().DateTime);
             DemoSeed.Run(db, today);
+        }
+        else if (FirstRunSetup.Run(db, cfg["Setup:AdminEmail"], cfg["Setup:AdminPassword"], cfg["Setup:AdminName"], today))
+        {
+            app.Logger.LogInformation("First run: created HR admin {Email} with default leave types and holidays", cfg["Setup:AdminEmail"]);
+        }
+        else if (!db.Employees.Any())
+        {
+            app.Logger.LogWarning("Database has no users. Set Setup:AdminEmail and Setup:AdminPassword to create the first HR admin.");
         }
     }
 }

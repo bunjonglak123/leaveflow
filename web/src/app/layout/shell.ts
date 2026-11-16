@@ -20,6 +20,7 @@ const NAV: NavItem[] = [
   { path: '/hr/reports', label: 'รายงานรายเดือน', icon: 'summarize', roles: ['HrAdmin'] },
   { path: '/hr/employees', label: 'พนักงาน', icon: 'group', roles: ['HrAdmin'] },
   { path: '/hr/settings', label: 'ประเภทการลาและวันหยุด', icon: 'tune', roles: ['HrAdmin'] },
+  { path: '/password', label: 'เปลี่ยนรหัสผ่าน', icon: 'key', roles: ['Employee', 'Manager', 'HrAdmin'] },
 ];
 
 @Component({
